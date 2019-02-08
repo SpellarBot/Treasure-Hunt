@@ -11,6 +11,7 @@ import logo from './logo.svg';
 import './App.css';
 import axios from 'axios'
 import Map from './Map'
+import Status from './Status'
 //ALL ALGORITHM + HELPER FUNCTIONALITIES TESTED  
 
 class App extends Component {
@@ -26,7 +27,7 @@ class App extends Component {
       authorization: {headers: {Authorization: 'Token ' + process.env.REACT_APP_AUTH}},
       num_visited: 0,
       stopped: false,
-
+      status: null
     }
   }
 
@@ -45,9 +46,11 @@ class App extends Component {
       let graph = await JSON.parse(localStorage.getItem('graph'))
       this.setState({map: graph})
     }
+    await this.updateStatus()
     axios 
     .get('https://lambda-treasure-hunt.herokuapp.com/api/adv/init/', this.state.authorization)
     .then(async(res) => {
+      console.log(res.data)
       this.setState({currRoomInfo: res.data})
       let newroom = await this.newRoom(null, null)
       this.setState({ visited: {...this.state.visited, [this.state.currRoomInfo.room_id]: newroom}})
@@ -84,6 +87,11 @@ class App extends Component {
           this.setState({ traversalPath: [...this.state.traversalPath, direction] }) 
           // Adds inverse of direction to the array for simpler back tracking.
           this.setState({ backtracker: [...this.state.backtracker, inverseDirections[direction]] }) 
+          if(this.state.currRoomInfo.items.length > 0) {
+            await this.pickupTreasure();
+            await this.timeout(this.state.currRoomInfo.cooldown * 1000)
+            
+          }
           // Attempts to move the player in the given direction.
           let info = await this.playerMove(direction)
           this.setState({currRoomInfo: info})
@@ -109,6 +117,30 @@ class App extends Component {
     if(this.state.stopped === false) {
       localStorage.setItem('graph', JSON.stringify(this.state.visited))
     }
+  }
+
+  pickupTreasure = async() => {
+    await axios
+    .post('https://lambda-treasure-hunt.herokuapp.com/api/adv/take/', {"name": this.state.currRoomInfo.items[0]}, this.state.authorization)
+    .then(async(res) => {
+      await this.updateStatus()
+    })
+  }
+
+  updateStatus = async() => {
+    await axios
+    .post('https://lambda-treasure-hunt.herokuapp.com/api/adv/status/', {},this.state.authorization)
+    .then(async(res) => {
+      this.setState({status: res.data})
+      await this.timeout(this.state.status.cooldown * 1000)
+    })
+    .catch(err => {
+      console.log(err)
+    })
+  }
+
+  dropItem = async (ev) => {
+    console.log(ev.target.name)
   }
 
   /*
@@ -213,12 +245,21 @@ class App extends Component {
     } else {
       generating = <h1>Generating Map</h1>
     }
+
     let currRoom;
     if(this.state.currRoomInfo) {
       currRoom = <h1>Room ID: {this.state.currRoomInfo.room_id}</h1>
     } else {
       currRoom = <h1>Room ID:</h1>
     }
+
+    let status;
+    if(this.state.status != null) {
+      status = <Status statusInfo = {this.state.status} dropItem = {this.dropItem}/>
+    } else {
+      status = <h1>Retrieving Status</h1>
+    }
+
     return (
       <div className="App">
         {generating}
@@ -236,6 +277,7 @@ class App extends Component {
             <button onClick={this.reset_handler}>Reset</button>
             <button onClick={this.stop_handler}>Stop</button>
           </div>
+          {status}
         </div>
       </div>
 
