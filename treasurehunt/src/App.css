@@ -1,5 +1,9 @@
 .App {
   text-align: center;
+  background-color: #c6ecc6;
+  height: 100%;
+  width: 100%
+  
 }
 
 .App-logo {
@@ -20,6 +24,44 @@
 
 .App-link {
   color: #61dafb;
+}
+
+.HUD {
+  color: white;
+  display: flex;
+  flex-wrap: wrap;
+  justify-items: center;
+  width: 200px;
+  height: 100%;
+  background-color: #00b33c;
+  margin: 20px;
+  padding-bottom: 20px
+}
+
+.movement-buttons, .extra-buttons {
+  width: 100%
+}
+
+.movement-buttons button{
+  width: 90px;
+  margin: 2px;
+  background-color: #f2e6d9;
+  border: 1px solid black
+}
+
+.extra-buttons {
+  margin-top: 20px
+}
+
+.extra-buttons button {
+  margin: 2px;
+  background-color: #f2e6d9;
+  border: 1px solid black
+}
+
+.movement-buttons .n {
+  margin-left: 50px;
+  margin-right: 50px;
 }
 
 @keyframes App-logo-spin {

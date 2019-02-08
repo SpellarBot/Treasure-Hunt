@@ -16,12 +16,18 @@ class App extends Component {
       inverseDirections: {'n': 's', 's':'n', 'w':'e', 'e':'w'},
       currRoomInfo: null,
       authorization: {headers: {Authorization: 'Token ' + process.env.REACT_APP_AUTH}},
-      num_visited: 0
+      num_visited: 0,
+      stopped: false,
+
     }
   }
 
   
   componentDidMount = async() => {
+    this.init()
+  }
+
+  init = async() => {
     if(localStorage.getItem('graph')) {
       let graph = await JSON.parse(localStorage.getItem('graph'))
       this.setState({map: graph})
@@ -46,15 +52,14 @@ class App extends Component {
     .catch(err => {
       console.log(err)
     })
-    
   }
 
   automate = async() => {
     //I want to explore similar to the other traversal except this time I want 
     // to add the wise explorer function to make it faster
+    await this.setState({stopped: false})
     let {inverseDirections} = this.state
-    
-    while(Object.keys(this.state.visited).length !== 500) {  
+    while(Object.keys(this.state.visited).length !== 500 & this.state.stopped === false) {  
       console.log(this.state.visited)
       let unexpExits = this.checkExits(this.state.visited[this.state.currRoomInfo.room_id])
       if(unexpExits.length > 0) {         
@@ -87,7 +92,9 @@ class App extends Component {
       localStorage.setItem('backtracker', JSON.stringify(this.state.backtracker))
       localStorage.setItem('visited', JSON.stringify(this.state.visited));
     }
-    localStorage.setItem('graph', JSON.stringify(this.state.visited))
+    if(this.state.stopped === false) {
+      localStorage.setItem('graph', JSON.stringify(this.state.visited))
+    }
   }
 
   playerMove = async (directionInfo) => {
@@ -119,7 +126,6 @@ class App extends Component {
     tempList.forEach(exit => { 
       temp[exit] = '?' 
     });
-    console.log(this.state.currRoomInfo.coordinates)
     var xy = this.state.currRoomInfo.coordinates.replace(/[{()}]/g, '').split(',');
     temp['x'] = xy[0]
     temp['y'] = xy[1]
@@ -141,25 +147,52 @@ class App extends Component {
   auto_handler =() => {
     this.automate()
   }
+
+  reset_handler = async() => {
+    localStorage.removeItem('visited')
+    localStorage.removeItem('backtracker')
+    let newroom = await this.newRoom(null, null)
+    this.setState({ visited: {...this.state.visited, [this.state.currRoomInfo.room_id]: newroom}})
+    this.setState({backtracker: []})
+  }
+  
+  stop_handler = () => {
+    this.setState({stopped: true})
+  }
   
   render() {
     let generating;
-    if(this.state.map != null) {
-      generating = <Map mapInfo = {this.state.map}/>
+    if(this.state.map != null & this.state.currRoomInfo != null) {
+      generating = <Map mapInfo = {this.state.map} currRoom = {this.state.currRoomInfo.room_id}/>
     } else {
       generating = <h1>Generating Map</h1>
+    }
+    let currRoom;
+    if(this.state.currRoomInfo) {
+      currRoom = <h1>Room ID: {this.state.currRoomInfo.room_id}</h1>
+    } else {
+      currRoom = <h1>Room ID:</h1>
     }
     return (
       <div className="App">
         {generating}
-        <div className='movement-buttons'>
-          <button onClick={this.handle_move_click} name='n'>N</button>
-          <button onClick={this.handle_move_click} name='e'>E</button>
-          <button onClick={this.handle_move_click} name='s'>S</button>
-          <button onClick={this.handle_move_click} name='w'>W</button>
+        <div className='HUD'>
+          {currRoom}
+          <div className='movement-buttons'>
+            <button className= 'n' onClick={this.handle_move_click} name='n'>N</button>
+            <button className= 'w' onClick={this.handle_move_click} name='w'>W</button>
+            <button className= 'e' onClick={this.handle_move_click} name='e'>E</button>
+            <button className= 's' onClick={this.handle_move_click} name='s'>S</button>
+            
+          </div>
+          <div className='extra-buttons'>
+            <button onClick={this.auto_handler}>Auto</button>
+            <button onClick={this.reset_handler}>Reset</button>
+            <button onClick={this.stop_handler}>Stop</button>
+          </div>
         </div>
-        <button onClick={this.auto_handler}>Auto</button>
       </div>
+
     );
   }
 }
