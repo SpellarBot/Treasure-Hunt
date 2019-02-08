@@ -2,8 +2,9 @@
   text-align: center;
   background-color: #c6ecc6;
   height: 100%;
-  width: 100%
-  
+  width: 100%;
+  margin: 0 auto;
+  min-width: 300px;
 }
 
 .App-logo {
@@ -11,6 +12,13 @@
   height: 40vmin;
 }
 
+body {
+  height: 100%;
+  width: 100%
+}
+#root {
+  width: 100%
+}
 .App-header {
   background-color: #282c34;
   min-height: 100vh;
@@ -34,8 +42,8 @@
   width: 200px;
   height: 100%;
   background-color: #00b33c;
-  margin: 20px;
-  padding-bottom: 20px
+  margin-top: 0px;
+  padding-bottom: 100%
 }
 
 .movement-buttons, .extra-buttons {
