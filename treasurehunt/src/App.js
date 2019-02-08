@@ -328,7 +328,7 @@ class App extends Component {
 
     let status;
     if(this.state.status != null) {
-      status = <Status statusInfo = {this.state.status} dropItem = {this.dropItem}/>
+      status = <Status statusInfo = {this.state.status} dropItem = {this.dropItem} stopped = {this.state.stopped}/>
     } else {
       status = <h1>Retrieving Status</h1>
     }
