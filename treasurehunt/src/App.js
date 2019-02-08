@@ -27,12 +27,14 @@ class App extends Component {
       authorization: {headers: {Authorization: 'Token ' + process.env.REACT_APP_AUTH}},
       num_visited: 0,
       stopped: false,
-      status: null
+      status: null,
+      onCooldown: false
     }
   }
 
   
   componentDidMount = async() => {
+    await this.timeout(10 * 1000)
     this.init()
   }
 
@@ -79,40 +81,48 @@ class App extends Component {
     await this.setState({stopped: false})
     let {inverseDirections} = this.state
     while(Object.keys(this.state.visited).length !== 500 & this.state.stopped === false) {  
-      let unexpExits = this.checkExits(this.state.visited[this.state.currRoomInfo.room_id])
-      if(unexpExits.length > 0) {         
+      console.log(this.state.currRoomInfo)
+      let unexpExits = await this.checkExits(this.state.visited[this.state.currRoomInfo.room_id])
+      if(unexpExits.length > 0) {  
+          console.log(unexpExits)
           let direction = unexpExits.pop() 
           let prevRoomID = this.state.currRoomInfo.room_id
           // **Adds new direction to the traversalPath so we can track number of moves.
           this.setState({ traversalPath: [...this.state.traversalPath, direction] }) 
           // Adds inverse of direction to the array for simpler back tracking.
-          this.setState({ backtracker: [...this.state.backtracker, inverseDirections[direction]] }) 
+          this.setState({ backtracker: [...this.state.backtracker, inverseDirections[direction]] })
           if(this.state.currRoomInfo.items.length > 0) {
             await this.pickupTreasure();
-            await this.timeout(this.state.currRoomInfo.cooldown * 1000)
-            
+          }
+          if(this.state.currRoomInfo.title === 'Shop') {
+            await this.sellTreasure();
           }
           // Attempts to move the player in the given direction.
           let info = await this.playerMove(direction)
           this.setState({currRoomInfo: info})
           if(!this.state.visited[this.state.currRoomInfo.room_id]) {
             let temp = await this.newRoom(prevRoomID, direction);
-            this.setState({ visited: {...this.state.visited, [this.state.currRoomInfo.room_id]: temp}})
+            await this.setState({ visited: {...this.state.visited, [this.state.currRoomInfo.room_id]: temp}})
           }
             // Should update the value of the direction travelled in the previous visited node 
             // to the value of the current room id. If the current room is not logged in visited it will be added.
-          this.setState({visited: {...this.state.visited, [prevRoomID]: {...this.state.visited[prevRoomID], [direction]: this.state.currRoomInfo.room_id}}})
+          await this.setState({visited: {...this.state.visited, [prevRoomID]: {...this.state.visited[prevRoomID], [direction]: this.state.currRoomInfo.room_id}}})
+          localStorage.setItem('backtracker', JSON.stringify(this.state.backtracker))
+          localStorage.setItem('visited', JSON.stringify(this.state.visited));
           await this.timeout((this.state.currRoomInfo.cooldown * 1000)) 
       } else {
+          console.log('backtracker')
           let prevDir = this.state.backtracker
+          console.log(prevDir)
           prevDir = prevDir.splice(-1,1)[0]
           // **this.setState({ traversalPath: [...this.state.traversalPath, prevDir] })
           let info = await this.playerMove(prevDir)
+          localStorage.setItem('backtracker', JSON.stringify(this.state.backtracker))
+          
           this.setState({currRoomInfo: info})
           await this.timeout((this.state.currRoomInfo.cooldown * 1000))   
       }
-      localStorage.setItem('backtracker', JSON.stringify(this.state.backtracker))
-      localStorage.setItem('visited', JSON.stringify(this.state.visited));
+      
     }
     if(this.state.stopped === false) {
       localStorage.setItem('graph', JSON.stringify(this.state.visited))
@@ -120,11 +130,31 @@ class App extends Component {
   }
 
   pickupTreasure = async() => {
+    console.log('TRIED')
     await axios
     .post('https://lambda-treasure-hunt.herokuapp.com/api/adv/take/', {"name": this.state.currRoomInfo.items[0]}, this.state.authorization)
     .then(async(res) => {
+      await this.timeout((res.data.cooldown) * 1000)
       await this.updateStatus()
     })
+    .catch(err => {
+      console.log(err)
+    })
+  }
+
+  sellTreasure = async() => {
+    this.state.status.inventory.map(async(item) => {
+      await axios
+      .post('https://lambda-treasure-hunt.herokuapp.com/api/adv/sell/', {"name": item}, this.state.authorization)
+      .then(async(res) => {
+        await this.timeout((res.data.cooldown) * 1000)
+        await this.updateStatus()
+      })
+      .catch(err => {
+        console.log(err)
+      })
+    })
+    
   }
 
   updateStatus = async() => {
@@ -140,7 +170,17 @@ class App extends Component {
   }
 
   dropItem = async (ev) => {
+    ev.preventDefault()
+    ev.persist()
     console.log(ev.target.name)
+    await this.stop_handler()
+    await this.timeout(this.state.currRoomInfo.cooldown * 1000)
+    await axios
+    .post('https://lambda-treasure-hunt.herokuapp.com/api/adv/drop/', {"name": ev.target.name}, this.state.authorization)
+    .then(async(res) => {
+      await this.timeout((res.data.cooldown) * 1000)
+      await this.updateStatus()
+    })
   }
 
   /*
@@ -149,13 +189,15 @@ class App extends Component {
   room.
   */
   playerMove = async (directionInfo) => {
+    console.log(this.state.currRoomInfo)
+    console.log(directionInfo)
     const test = await axios 
     .post('https://lambda-treasure-hunt.herokuapp.com/api/adv/move/', {'direction': directionInfo}, this.state.authorization)
     .then(res => {
       return res.data
     })
     .catch(err => {
-      console.log(err)
+      return null
     })
     return await test
   }
@@ -206,9 +248,31 @@ class App extends Component {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  handle_move_click = (ev) => {
-    console.log(ev.target.name)
+  handle_move_click = async(ev) => {
+    let {inverseDirections} = this.state
+    let prevRoomID = this.state.currRoomInfo.room_id
+    let direction = ev.target.name
+    this.setState({ backtracker: [...this.state.backtracker, inverseDirections[direction]] })
+    let newRoom = await this.playerMove(direction)
+    if(newRoom != null) {
+      await this.setState({currRoomInfo: newRoom})
+      if(!this.state.visited[this.state.currRoomInfo.room_id]) {
+        let temp = await this.newRoom(prevRoomID, direction);
+        await this.setState({ visited: {...this.state.visited, [this.state.currRoomInfo.room_id]: temp}})
+      }
+        // Should update the value of the direction travelled in the previous visited node 
+        // to the value of the current room id. If the current room is not logged in visited it will be added.
+      await this.setState({visited: {...this.state.visited, [prevRoomID]: {...this.state.visited[prevRoomID], [direction]: this.state.currRoomInfo.room_id}}})
+      localStorage.setItem('backtracker', JSON.stringify(this.state.backtracker))
+      localStorage.setItem('visited', JSON.stringify(this.state.visited));
+      this.setState({onCooldown: true})
+      setTimeout(function() {
+        this.setState({onCooldown: false})
+      }.bind(this), (this.state.currRoomInfo.cooldown * 1000)); 
+  } else {
+    alert('Unable to move in that direction')
   }
+}
 
   /*
   No arguments/returns. Just calls the automate function.
@@ -259,19 +323,24 @@ class App extends Component {
     } else {
       status = <h1>Retrieving Status</h1>
     }
+    let movement;
+    if(this.state.onCooldown === true) {
+     movement = <h2>Movement on cooldown</h2>
+    } else {
+      movement = <div className='movement-buttons'>
+                  <button className= 'n' onClick={this.handle_move_click} name='n'>N</button>
+                  <button className= 'w' onClick={this.handle_move_click} name='w'>W</button>
+                  <button className= 'e' onClick={this.handle_move_click} name='e'>E</button>
+                  <button className= 's' onClick={this.handle_move_click} name='s'>S</button>
+                </div>
+    }
 
     return (
       <div className="App">
         {generating}
         <div className='HUD'>
           {currRoom}
-          <div className='movement-buttons'>
-            <button className= 'n' onClick={this.handle_move_click} name='n'>N</button>
-            <button className= 'w' onClick={this.handle_move_click} name='w'>W</button>
-            <button className= 'e' onClick={this.handle_move_click} name='e'>E</button>
-            <button className= 's' onClick={this.handle_move_click} name='s'>S</button>
-            
-          </div>
+          {movement}
           <div className='extra-buttons'>
             <button onClick={this.auto_handler}>Auto</button>
             <button onClick={this.reset_handler}>Reset</button>
