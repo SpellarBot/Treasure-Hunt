@@ -1,3 +1,11 @@
+/*
+This is the file that stores all functionality of the program.
+It has a function for initializing api connection, automating movement,
+calling the api for player movement, checking for unexplored rooms, creating
+new rooms, stopping automation, and reseting the program information. Along
+with the display components provided in the HUD.
+*/
+
 import React, { Component } from 'react';
 import logo from './logo.svg';
 import './App.css';
@@ -27,6 +35,11 @@ class App extends Component {
     this.init()
   }
 
+  /*
+  No arguments/returns. Initiates the program, checking local storage for 
+  available information and sets state accoridngly. Attempts API call to 
+  get information on starting point and sets state accordingly.
+  */
   init = async() => {
     if(localStorage.getItem('graph')) {
       let graph = await JSON.parse(localStorage.getItem('graph'))
@@ -39,7 +52,6 @@ class App extends Component {
       let newroom = await this.newRoom(null, null)
       this.setState({ visited: {...this.state.visited, [this.state.currRoomInfo.room_id]: newroom}})
       await this.timeout(this.state.currRoomInfo.cooldown * 1000)
-      console.log(this.state.currRoomInfo)
       if(localStorage.getItem('visited')) {
         let visitedInfo = await JSON.parse(localStorage.getItem('visited'))
         this.setState({visited: visitedInfo})
@@ -54,13 +66,16 @@ class App extends Component {
     })
   }
 
+  /* 
+  Used to iterate through the map until you have explored all the rooms. Has no returns
+  or arguments but does copy map information over to local storage as 'graph'.
+  In the scenario of a a refresh, the visited rooms and the reverse of the travelled
+  path are stored so the user can begin again where they left off.
+  */
   automate = async() => {
-    //I want to explore similar to the other traversal except this time I want 
-    // to add the wise explorer function to make it faster
     await this.setState({stopped: false})
     let {inverseDirections} = this.state
     while(Object.keys(this.state.visited).length !== 500 & this.state.stopped === false) {  
-      console.log(this.state.visited)
       let unexpExits = this.checkExits(this.state.visited[this.state.currRoomInfo.room_id])
       if(unexpExits.length > 0) {         
           let direction = unexpExits.pop() 
@@ -81,7 +96,6 @@ class App extends Component {
           this.setState({visited: {...this.state.visited, [prevRoomID]: {...this.state.visited[prevRoomID], [direction]: this.state.currRoomInfo.room_id}}})
           await this.timeout((this.state.currRoomInfo.cooldown * 1000)) 
       } else {
-        console.log('ERROR')
           let prevDir = this.state.backtracker
           prevDir = prevDir.splice(-1,1)[0]
           // **this.setState({ traversalPath: [...this.state.traversalPath, prevDir] })
@@ -97,6 +111,11 @@ class App extends Component {
     }
   }
 
+  /*
+  Takes the direction as an argument. Attempts to move according to that direction
+  through an api call. Then returns response data which holds information on another
+  room.
+  */
   playerMove = async (directionInfo) => {
     const test = await axios 
     .post('https://lambda-treasure-hunt.herokuapp.com/api/adv/move/', {'direction': directionInfo}, this.state.authorization)
@@ -109,16 +128,27 @@ class App extends Component {
     return await test
   }
 
-  checkExits = (currRoomArr) => {
+  /*
+  Takes the currRoomExits object as an argument. Iterates through the
+  currRoomExits to find rooms which are unexplored and returns the newly
+  created array of unexplored directions.
+  */
+  checkExits = (currRoomExits) => {
       let newArr = []
-      for(var key in currRoomArr) {
-        if(currRoomArr[key] === '?') {
+      for(var key in currRoomExits) {
+        if(currRoomExits[key] === '?') {
           newArr.push(key)
         }
       }
       return newArr
   }
 
+  /*
+  Takes prevroomID and direction as arguments. Creates a new object with a key
+  value per exit in the current room, along with the coordinates for that room.
+  If prevroomID is provided it will set inverse of the associated key equal to
+  the old room id. Then returns temp.
+  */
   newRoom = async (prevroomID, direction) => {
     let tempList = this.state.currRoomInfo.exits
     let temp = {} 
@@ -136,6 +166,10 @@ class App extends Component {
     return await temp
   }
 
+  /*
+  Takes in ms(milliseconds) as an argument. Returns a response to allow
+  the one who called it to know that the specified amount of time has passed.
+  */
   timeout = (ms) => {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
@@ -144,10 +178,18 @@ class App extends Component {
     console.log(ev.target.name)
   }
 
+  /*
+  No arguments/returns. Just calls the automate function.
+  */
   auto_handler =() => {
     this.automate()
   }
 
+  /*
+  No arguments/returns. Removes the local storage for visited/backtracker.
+  Resets state for backtracker and visited for a fresh start, allowing the
+  user to explore all 500 rooms again.
+  */
   reset_handler = async() => {
     localStorage.removeItem('visited')
     localStorage.removeItem('backtracker')
@@ -156,6 +198,10 @@ class App extends Component {
     this.setState({backtracker: []})
   }
   
+  /*
+  No arguments/returns. Sets state of stopped to true in order to prevent 
+  the automate function from iteration further.
+  */
   stop_handler = () => {
     this.setState({stopped: true})
   }
