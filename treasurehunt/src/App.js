@@ -26,7 +26,7 @@ class App extends Component {
       currRoomInfo: null,
       authorization: {headers: {Authorization: 'Token ' + process.env.REACT_APP_AUTH}},
       num_visited: 0,
-      stopped: false,
+      stopped: true,
       status: null,
       onCooldown: false
     }
@@ -309,12 +309,21 @@ class App extends Component {
     } else {
       generating = <h1>Generating Map</h1>
     }
+    let auto;
+    if(this.state.stopped === true) {
+      auto = <div>
+                  <button onClick={this.auto_handler}>Auto</button>
+                  <button onClick={this.reset_handler}>Reset</button>
+            </div>
+    } else {
+      auto = <button onClick={this.stop_handler}>Stop</button>
+    }
 
     let currRoom;
     if(this.state.currRoomInfo) {
-      currRoom = <h1>Room ID: {this.state.currRoomInfo.room_id}</h1>
+      currRoom = <h1>Room: {this.state.currRoomInfo.room_id}</h1>
     } else {
-      currRoom = <h1>Room ID:</h1>
+      currRoom = <h1>Room:</h1>
     }
 
     let status;
@@ -342,9 +351,9 @@ class App extends Component {
           {currRoom}
           {movement}
           <div className='extra-buttons'>
-            <button onClick={this.auto_handler}>Auto</button>
-            <button onClick={this.reset_handler}>Reset</button>
-            <button onClick={this.stop_handler}>Stop</button>
+            {auto}
+            
+            
           </div>
           {status}
         </div>
