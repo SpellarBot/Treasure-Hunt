@@ -7,7 +7,6 @@ with the display components provided in the HUD.
 */
 
 import React, { Component } from 'react';
-import logo from './logo.svg';
 import './App.css';
 import axios from 'axios'
 import Map from './Map'
@@ -76,8 +75,6 @@ class App extends Component {
     }
     let {inverseDirections} = this.state;
     while(Object.keys(this.state.visited).length !== 500 & this.state.stopped === false) {  
-      console.log(this.state.currRoomInfo);
-      console.log(this.state.num_visited);
       let unexpExits = await this.checkExits(this.state.visited[this.state.currRoomInfo.room_id]);
       if(unexpExits.length > 0) {  
           let direction = unexpExits.pop() ;
@@ -105,7 +102,6 @@ class App extends Component {
             // Should update the value of the direction travelled in the previous visited node 
             // to the value of the current room id. If the current room is not logged in visited it will be added.
           this.setState({visited: {...this.state.visited, [prevRoomID]: {...this.state.visited[prevRoomID], [direction]: this.state.currRoomInfo.room_id}}});
-          console.log(this.state.visited);
           this.setState({map: {...this.state.map, [prevRoomID]: {...this.state.visited[prevRoomID], [direction]: this.state.currRoomInfo.room_id}}});
           localStorage.setItem('map', JSON.stringify(this.state.map));
           await this.timeout((this.state.currRoomInfo.cooldown * 1000));
@@ -131,17 +127,13 @@ class App extends Component {
       if(this.state.stopped) {
         await this.setState({stopped: true});
       }
-      console.log(this.state.currRoomInfo.room_id, roomNum)
       let shortestPath = await this.bfs(this.state.currRoomInfo.room_id, roomNum);
       while(shortestPath.length !== 0) {
         let nextMoveId = shortestPath.pop()
         let nextMoveDirection;
-        console.log('NEXT MOVE',nextMoveId)
         for(let key in this.state.map[this.state.currRoomInfo.room_id]) {
-          console.log(this.state.map[this.state.currRoomInfo.room_id][key])
           if(this.state.map[this.state.currRoomInfo.room_id][key] === nextMoveId) {
             nextMoveDirection = key;
-            console.log('KEY',key)
             continue;
           }
         }
@@ -191,12 +183,10 @@ class App extends Component {
       path.push(currentPos);
       currentPos = graph[currentPos].prev;
     }
-    console.log(path)
     return path;
   }
 
   pickupTreasure = async() => {
-    console.log('TRIED')
     await axios
     .post('https://lambda-treasure-hunt.herokuapp.com/api/adv/take/', {"name": this.state.currRoomInfo.items[0]}, this.state.authorization)
     .then(async(res) => {
@@ -245,6 +235,21 @@ class App extends Component {
     .then(async(res) => {
       await this.timeout((res.data.cooldown) * 1000)
       this.updateStatus()
+    })
+  }
+
+  sellItem = async(ev) => {
+    ev.preventDefault()
+    ev.persist()
+    if(!this.state.stopped) {
+      this.stop_handler();
+    }
+    console.log(ev.target.name);
+    await axios 
+    .post('https://lambda-treasure-hunt.herokuapp.com/api/adv/sell/', {'name': ev.target.name, confirm: 'yes'}, this.state.authorization)
+    .then(async(res) => {
+      await this.timeout((res.data.cooldown) * 1000);
+      this.updateStatus();
     })
   }
 
@@ -391,7 +396,7 @@ class App extends Component {
 
     let status;
     if(this.state.status != null) {
-      status = <Status statusInfo = {this.state.status} dropItem = {this.dropItem} stopped = {this.state.stopped}/>
+      status = <Status statusInfo = {this.state.status} currRoom = {this.state.currRoomInfo} sellItem = {this.sellItem} dropItem = {this.dropItem} stopped = {this.state.stopped}/>
     } else {
       status = <h1>Retrieving Status</h1>
     }
@@ -416,7 +421,6 @@ class App extends Component {
           <div>
             <h2>Travel to Room:</h2>
             <input placeholder="Room ID" onChange={(ev) => {
-                console.log(ev.target.value)
                 this.setState({roomInput: parseInt(ev.target.value)});
             }}/>
             <button onClick={() => {
