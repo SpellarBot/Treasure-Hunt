@@ -57,6 +57,7 @@ class App extends Component {
       let newroom = await this.newRoom(null, null);
       this.setState({ visited: {[this.state.currRoomInfo.room_id]: newroom}});
       this.setState({ backtracker: []});
+      this.bfs('449','1');
       await this.timeout(this.state.currRoomInfo.cooldown * 1000);
     })
     .catch(err => {
@@ -124,13 +125,12 @@ class App extends Component {
 
   chooseRoom = async(roomNum) => {
     //Check if stopped, if not stop any new actions.
-    if(this.state.map[roomNum] && roomNum !== this.state.currRoomInfo.room_id) {
+    //if(this.state.map[roomNum] && roomNum !== this.state.currRoomInfo.room_id) {
       if(this.state.stopped) {
         await this.setState({stopped: true});
       }
-      console.log(this.state.currRoomInfo.room_id, roomNum)
       let shortestPath = await this.bfs(this.state.currRoomInfo.room_id, roomNum);
-      console.log('SHORTEST PATH', shortestPath);
+      /*
       shortestPath.pop();
       while(shortestPath.length != 0) {
         let nextMoveId = shortestPath.pop()
@@ -160,39 +160,35 @@ class App extends Component {
     } else {
       alert("Room not discovered yet!")
     }
+    */
   }
 
   bfs = (sourceNum, roomNum) => {
-    let queue = [sourceNum];
-    let seen = {}
-    seen[sourceNum] = true;
-    let prev = {}
-    while(queue.length !== 0) {
+    let {map} = this.state;
+    let queue = [];
+    let graph = {};
+    for(let key in this.state.map) {
+        graph[key] = {};
+        graph[key].prev = null;
+        graph[key].visited = false;
+    }
+    graph[sourceNum].visited = true;
+    queue.push(sourceNum);
+    while(queue.length !== 0 && graph[roomNum].visited === false) {
       let curr = queue.shift();
-      console.log('CURR', curr);
-      console.log(this.state.map[curr])
-      for(let key in this.state.map[curr]) {
-        console.log(this.state.map[curr])
-        let roomVal = this.state.map[curr][key];
-        if(typeof roomVal !== 'string') {
-          if(seen[roomVal]) {
-            continue;
-          }
-          seen[roomVal] = true;
-          if(roomVal === roomNum) {
-            let path = [roomVal];
-            while(curr !== sourceNum) {
-              path.push(curr);
-              curr = prev[curr];
-            }
-            console.log(path)
-            path.push(curr);
-            return path;
-          }
-          prev[roomVal] = curr;
-          queue.push(roomVal);
+      for(let key in map[curr]) {
+        let adjacentRoom = map[curr][key];
+        if(typeof adjacentRoom != 'string' && graph[adjacentRoom].visited === false) {
+          graph[adjacentRoom].visited = true;
+          graph[adjacentRoom].prev = parseInt(curr);
+          queue.push(adjacentRoom);
         }
       }
+    }
+    let currentPos = roomNum;
+    while(graph[currentPos].prev !== null) {
+      console.log(currentPos);
+      currentPos = graph[currentPos].prev;
     }
   }
 
