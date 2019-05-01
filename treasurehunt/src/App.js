@@ -43,21 +43,20 @@ class App extends Component {
   get information on starting point and sets state accordingly.
   */
   init = async() => {
-    
-    
-    if(localStorage.getItem('map')) {
-      let graph = await JSON.parse(localStorage.getItem('map'));
-      this.setState({map: graph});
-    }
     await this.updateStatus()
     axios 
     .get('https://lambda-treasure-hunt.herokuapp.com/api/adv/init/', this.state.authorization)
     .then(async(res) => {
       this.setState({currRoomInfo: res.data});
       let newroom = await this.newRoom(null, null);
+      if(localStorage.getItem('map')) {
+        let graph = await JSON.parse(localStorage.getItem('map'));
+        this.setState({map: graph});
+      } else {
+        this.setState({map: {[this.state.currRoomInfo.room_id]: newroom}})
+      }
       this.setState({ visited: {[this.state.currRoomInfo.room_id]: newroom}});
       this.setState({ backtracker: []});
-      this.bfs('449','1');
       await this.timeout(this.state.currRoomInfo.cooldown * 1000);
     })
     .catch(err => {
@@ -99,11 +98,14 @@ class App extends Component {
           if(!this.state.visited[this.state.currRoomInfo.room_id]) {
             let temp = await this.newRoom(prevRoomID, direction);
             this.setState({ visited: {...this.state.visited, [this.state.currRoomInfo.room_id]: temp}});
-            this.setState({ map: {...this.state.map, [this.state.currRoomInfo.room_id]: temp}});
+            if(!this.state.map[this.state.currRoomInfo.room_id]) {
+              this.setState({ map: {...this.state.map, [this.state.currRoomInfo.room_id]: temp}});
+            }
           }
             // Should update the value of the direction travelled in the previous visited node 
             // to the value of the current room id. If the current room is not logged in visited it will be added.
           this.setState({visited: {...this.state.visited, [prevRoomID]: {...this.state.visited[prevRoomID], [direction]: this.state.currRoomInfo.room_id}}});
+          console.log(this.state.visited);
           this.setState({map: {...this.state.map, [prevRoomID]: {...this.state.visited[prevRoomID], [direction]: this.state.currRoomInfo.room_id}}});
           localStorage.setItem('map', JSON.stringify(this.state.map));
           await this.timeout((this.state.currRoomInfo.cooldown * 1000));
@@ -111,8 +113,7 @@ class App extends Component {
           let prevDir = this.state.backtracker;
           prevDir = prevDir.splice(-1,1)[0];
           // **this.setState({ traversalPath: [...this.state.traversalPath, prevDir] })
-          let info = await this.playerMove(prevDir);
-          localStorage.setItem('backtracker', JSON.stringify(this.state.backtracker));      
+          let info = await this.playerMove(prevDir); 
           this.setState({currRoomInfo: info});
           await this.timeout((this.state.currRoomInfo.cooldown * 1000));
       }
@@ -125,25 +126,25 @@ class App extends Component {
 
   chooseRoom = async(roomNum) => {
     //Check if stopped, if not stop any new actions.
-    //if(this.state.map[roomNum] && roomNum !== this.state.currRoomInfo.room_id) {
+    
+    if(this.state.map[roomNum] && roomNum !== this.state.currRoomInfo.room_id) {
       if(this.state.stopped) {
         await this.setState({stopped: true});
       }
+      console.log(this.state.currRoomInfo.room_id, roomNum)
       let shortestPath = await this.bfs(this.state.currRoomInfo.room_id, roomNum);
-      /*
-      shortestPath.pop();
-      while(shortestPath.length != 0) {
+      while(shortestPath.length !== 0) {
         let nextMoveId = shortestPath.pop()
         let nextMoveDirection;
+        console.log('NEXT MOVE',nextMoveId)
         for(let key in this.state.map[this.state.currRoomInfo.room_id]) {
-          console.log('check')
+          console.log(this.state.map[this.state.currRoomInfo.room_id][key])
           if(this.state.map[this.state.currRoomInfo.room_id][key] === nextMoveId) {
             nextMoveDirection = key;
+            console.log('KEY',key)
             continue;
           }
         }
-        console.log(nextMoveDirection);
-        console.log(nextMoveId)
         await axios
         .post('https://lambda-treasure-hunt.herokuapp.com/api/adv/move/', {"direction": nextMoveDirection, "next_room_id": nextMoveId.toString()}, this.state.authorization)
         .then(async(res) => {
@@ -160,7 +161,6 @@ class App extends Component {
     } else {
       alert("Room not discovered yet!")
     }
-    */
   }
 
   bfs = (sourceNum, roomNum) => {
@@ -178,18 +178,21 @@ class App extends Component {
       let curr = queue.shift();
       for(let key in map[curr]) {
         let adjacentRoom = map[curr][key];
-        if(typeof adjacentRoom != 'string' && graph[adjacentRoom].visited === false) {
+        if(typeof adjacentRoom !== 'string' && graph[adjacentRoom].visited === false) {
           graph[adjacentRoom].visited = true;
           graph[adjacentRoom].prev = parseInt(curr);
           queue.push(adjacentRoom);
         }
       }
     }
+    let path = []
     let currentPos = roomNum;
     while(graph[currentPos].prev !== null) {
-      console.log(currentPos);
+      path.push(currentPos);
       currentPos = graph[currentPos].prev;
     }
+    console.log(path)
+    return path;
   }
 
   pickupTreasure = async() => {
@@ -319,12 +322,14 @@ class App extends Component {
       if(!this.state.visited[this.state.currRoomInfo.room_id]) {
         let temp = await this.newRoom(prevRoomID, direction);
         this.setState({ visited: {...this.state.visited, [this.state.currRoomInfo.room_id]: temp}});
-        this.setState({ map: {...this.state.map, [this.state.currRoomInfo.room_id]: temp}});
+        if(!this.state.map[this.state.currRoomInfo.room_id]) {
+          this.setState({ map: {...this.state.map, [this.state.currRoomInfo.room_id]: temp}});
+        }
       }
         // Should update the value of the direction travelled in the previous visited node 
         // to the value of the current room id. If the current room is not logged in visited it will be added.
       this.setState({visited: {...this.state.visited, [prevRoomID]: {...this.state.visited[prevRoomID], [direction]: this.state.currRoomInfo.room_id}}});
-      this.setState({map: {...this.state.map, [prevRoomID]: {...this.state.map[prevRoomID], [direction]: this.state.currRoomInfo.room_id}}});
+      await this.setState({map: {...this.state.map, [prevRoomID]: {...this.state.map[prevRoomID], [direction]: this.state.currRoomInfo.room_id}}});
       localStorage.setItem('map', JSON.stringify(this.state.map));
       this.setState({onCooldown: true})
       setTimeout(function() {
@@ -348,8 +353,6 @@ class App extends Component {
   user to explore all 500 rooms again.
   */
   reset_handler = async() => {
-    localStorage.removeItem('visited')
-    localStorage.removeItem('backtracker')
     let newroom = await this.newRoom(null, null)
     this.setState({ visited: {[this.state.currRoomInfo.room_id]: newroom}})
     this.setState({backtracker: []})
@@ -374,7 +377,6 @@ class App extends Component {
     if(this.state.stopped === true) {
       auto = <div>
                   <button onClick={this.auto_handler}>Auto</button>
-                  <button onClick={this.reset_handler}>Reset</button>
             </div>
     } else {
       auto = <button onClick={this.stop_handler}>Stop</button>
