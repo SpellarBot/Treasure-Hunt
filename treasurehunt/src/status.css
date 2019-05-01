@@ -1,0 +1,13 @@
+.statusDisplay {
+    width: 100%;
+}
+
+.itemDisplay {
+    display: flex;
+    width: 100%
+}
+
+.ItemDisplay button {
+  background-color: #f2e6d9;
+  border: 1px solid black
+}
