@@ -2,7 +2,7 @@
 
 Welcome to my treasure hunt github!
 
-Some information before you go the live site:
+##Some information before you go the live site:
 - Authorizations restrict to one player profile so you may see that you don't start in room 0 and may already have items or gold.
 - If you have items you want to sell, you need to discover the SHOP which is in room 1.
 - Each users map progress is seperate through local storage.
@@ -11,7 +11,7 @@ Some information before you go the live site:
 
 LIVE SITE: https://condescending-shaw-7f2791.netlify.com/
 
-# Lambda Treasure Hunt
+#Treasure Hunt
 
 Welcome to the first annual Lambda Treasure Hunt!
 
@@ -29,7 +29,7 @@ You can see the server source code [here](https://github.com/br80/lambda_treasur
 
 ## Rooms
 
-The map is laid out in a grid: Similar to your worlds from Week 1 of your CS training, each room may have exits in the cardinal directions: north, south, east and west. Each room also comes with a unique ID and coordinates for your convenience.
+The map is laid out in a grid. Each room may have exits in the cardinal directions: north, south, east and west. Each room also comes with a unique ID and coordinates for your convenience.
 
 ```
 // Starting room
