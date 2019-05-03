@@ -1,17 +1,27 @@
 # General Info
 
-Welcome to my treasure hunt github!
+Welcome to my Treasure Hunt github!
+### Status: Complete
 
-##Some information before you go the live site:
+### What is Treasure Hunt?
+Treasure Hunt is a dungeon crawler esque game where you explore the dungeon in order to find loot/treasure to sell or use. The game is largely meant for the user to take advantage of the automated exploration and direct room travel algorithms. But, the user can also manually control player movement.
+
+My goal in making this project was to practice my algorithmic thinking in a new and challenging way, outside of the general practice problem.
+
+### Tech Stack: React || CSS
+
+### Some information before you go the live site:
 - Authorizations restrict to one player profile so you may see that you don't start in room 0 and may already have items or gold.
-- If you have items you want to sell, you need to discover the SHOP which is in room 1.
+- If you have items you want to sell, you need to discover the SHOP which is in ROOM 1.
 - Each users map progress is seperate through local storage.
 - Clicking "Auto", will automate dungeon exploration and treasure collection.
 - You cannot travel to rooms you haven't discovered yet.
 
-LIVE SITE: https://condescending-shaw-7f2791.netlify.com/
+LIVE SITE: https://condescending-shaw-7f2791.netlify.com/ (No account needed)
 
-#Treasure Hunt
+
+
+# Treasure Hunt
 
 Welcome to the first annual Lambda Treasure Hunt!
 
